@@ -178,7 +178,8 @@ schema_for_html = {k: {"label": v["label"], "domain": v["domain"], "range": v["r
 tpl = (HERE / "graph_template.html").read_text(encoding="utf-8")
 d3 = (HERE / "d3.min.js").read_text(encoding="utf-8")
 html = (tpl.replace("/*__D3__*/", d3)
-           .replace("/*__DATA__*/null", json.dumps(doc, ensure_ascii=False).replace("</", "<\\/"))
+           # HTML display drops the accent (Dictée → Dictee); the .jsonld keeps source spelling
+           .replace("/*__DATA__*/null", json.dumps(doc, ensure_ascii=False).replace("Dictée", "Dictee").replace("</", "<\\/"))
            .replace("/*__SCHEMA__*/null", json.dumps(schema_for_html, ensure_ascii=False).replace("</", "<\\/")))
 OUT_HTML.write_text(html, encoding="utf-8")
 

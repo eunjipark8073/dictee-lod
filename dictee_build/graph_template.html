@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dictée LOD Graph</title>
+<title>Dictee LOD Graph</title>
 <style>
 :root {
   color-scheme: light;
@@ -144,34 +144,34 @@ h3 { font-size: 12px; color: var(--muted); margin: 14px 0 6px; font-weight: 650;
 <body>
 <div class="app">
   <header>
-    <h1>Dictée LOD Graph <span style="color:var(--muted);font-weight:500">v2</span></h1>
+    <h1>Dictee LOD Graph <span style="color:var(--muted);font-weight:500">v2</span></h1>
     <div class="stats" id="stats"></div>
     <div class="tools">
-      <input type="search" id="search" list="names" placeholder="엔티티 검색 (en / ko)…" aria-label="엔티티 검색">
+      <input type="search" id="search" list="names" placeholder="Search entities…" aria-label="Search entities">
       <datalist id="names"></datalist>
-      <label class="chk"><input type="checkbox" id="edgeLabels" checked> 엣지 라벨</label>
-      <div class="seg" role="group" aria-label="보기 전환">
-        <button class="btn" id="vGraph" aria-pressed="true">그래프</button>
-        <button class="btn" id="vTable" aria-pressed="false">관계 표</button>
+      <label class="chk"><input type="checkbox" id="edgeLabels" checked> Edge labels</label>
+      <div class="seg" role="group" aria-label="Switch view">
+        <button class="btn" id="vGraph" aria-pressed="true">Graph</button>
+        <button class="btn" id="vTable" aria-pressed="false">Relations table</button>
       </div>
-      <button class="btn" id="fit">화면 맞춤</button>
-      <button class="btn" id="reheat">레이아웃 재배치</button>
-      <button class="btn" id="theme" title="테마 전환">◐</button>
+      <button class="btn" id="fit">Fit to screen</button>
+      <button class="btn" id="reheat">Re-run layout</button>
+      <button class="btn" id="theme" title="Toggle theme">◐</button>
     </div>
   </header>
 
   <main>
-    <svg id="graph" role="img" aria-label="Dictée entity relationship graph"></svg>
+    <svg id="graph" role="img" aria-label="Dictee entity relationship graph"></svg>
     <div id="tableView" hidden></div>
     <div id="tip" hidden></div>
-    <div class="hint" id="hint">드래그: 노드 이동 · 휠: 확대/축소 · 배경 드래그: 이동 · 클릭: 상세 정보 · 더블클릭: 고정 해제</div>
+    <div class="hint" id="hint">Drag: move node · Wheel: zoom · Drag background: pan · Click: details · Double-click: unpin</div>
   </main>
 
   <aside>
-    <section id="detail"><h2>상세 정보</h2><div class="empty">노드나 엣지를 클릭하면 상세 정보가 표시됩니다.</div></section>
-    <section><h2>노드 타입 <button class="link-btn" id="allTypes">전체</button></h2><div class="legend" id="legend"></div></section>
-    <section><h2>Predicate <button class="link-btn" id="allPreds">전체</button></h2><div class="preds" id="preds"></div></section>
-    <section><h2>고립 노드 <span id="isoCount" style="text-transform:none;letter-spacing:0"></span></h2>
+    <section id="detail"><h2>Details</h2><div class="empty">Click a node or edge to view details.</div></section>
+    <section><h2>Node types <button class="link-btn" id="allTypes">All</button></h2><div class="legend" id="legend"></div></section>
+    <section><h2>Predicate <button class="link-btn" id="allPreds">All</button></h2><div class="preds" id="preds"></div></section>
+    <section><h2>Isolated nodes <span id="isoCount" style="text-transform:none;letter-spacing:0"></span></h2>
       <div class="iso-list" id="isoList"></div></section>
   </aside>
 </div>
@@ -181,7 +181,6 @@ h3 { font-size: 12px; color: var(--muted); margin: 14px 0 6px; font-weight: 650;
 const LD = /*__DATA__*/null;
 const SCHEMA = /*__SCHEMA__*/null;
 const TYPES = ["Person", "Event", "Concept", "Object", "Group", "Work"];
-const TYPE_KO = {Person: "인물", Event: "사건", Concept: "개념", Object: "객체", Group: "단체", Work: "작품"};
 
 // ---------- JSON-LD → nodes / links ----------
 const byId = new Map();
@@ -222,8 +221,8 @@ const typeCounts = Object.fromEntries(TYPES.map(t => [t, nodes.filter(n => n.typ
 const isoNodes = nodes.filter(n => n.iso);
 
 document.getElementById("stats").innerHTML =
-  `노드 <b>${nodes.length}</b> · 관계 <b>${links.length}</b> · predicate <b>${predCounts.length}</b> · 고립 <b>${isoNodes.length}</b>`;
-document.getElementById("names").innerHTML = nodes.map(n => `<option value="${esc(n.en)}">${esc(n.ko)}</option>`).join("");
+  `Nodes <b>${nodes.length}</b> · Relations <b>${links.length}</b> · Predicates <b>${predCounts.length}</b> · Isolated <b>${isoNodes.length}</b>`;
+document.getElementById("names").innerHTML = nodes.map(n => `<option value="${esc(n.en)}">${n.type}</option>`).join("");
 
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
@@ -264,7 +263,7 @@ nodeSel.append("circle").attr("r", d => d.r).attr("class", d => "fill-" + d.type
 nodeSel.append("text").attr("x", d => d.r + 4).attr("dy", "0.35em").text(d => d.en);
 nodeSel.on("click", (ev, d) => { ev.stopPropagation(); select({kind: "node", n: d}); })
   .on("dblclick", (ev, d) => { ev.stopPropagation(); if (!d.iso) { d.fx = d.fy = null; sim.alpha(0.3).restart(); } })
-  .on("mousemove", (ev, d) => showTip(ev, `<b>${esc(d.en)}</b> ${esc(d.ko)}<br><span class="t">${d.type} · 연결 ${d.deg}</span>`))
+  .on("mousemove", (ev, d) => showTip(ev, `<b>${esc(d.en)}</b><br><span class="t">${d.type} · ${d.deg} connection${d.deg === 1 ? "" : "s"}</span>`))
   .on("mouseleave", hideTip)
   .call(d3.drag()
     .on("start", (ev, d) => { if (!ev.active) sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; hideTip(); })
@@ -302,7 +301,7 @@ function placeIsolated() {
   isoLayer.append("rect").attr("class", "iso-box").attr("x", isoBox.x).attr("y", isoBox.y)
     .attr("width", isoBox.w).attr("height", isoBox.h);
   isoLayer.append("text").attr("class", "iso-title").attr("x", isoBox.x + 14).attr("y", isoBox.y + 20)
-    .text(`고립 노드 · 관계 없음 (${isoNodes.length})`);
+    .text(`Isolated nodes · no relations (${isoNodes.length})`);
 }
 
 function render() {
@@ -364,7 +363,7 @@ function applyView() {
 const nodeLink = n => `<a data-node="${esc(n.id)}"><span class="dot fill-${n.type}" style="display:inline-block;width:9px;height:9px;background:var(--c-${n.type});margin-right:4px"></span>${esc(n.en)}</a>`;
 const predTag = p => {
   const s = SCHEMA[p];
-  const title = s ? `${s.label}: ${s.domain} → ${s.range}` : "Property 시트에 정의되지 않은 predicate";
+  const title = s ? `${s.label}: ${s.domain} → ${s.range}` : "Predicate not defined in the Property sheet";
   return `<span class="p" title="${esc(title)}">${esc(p)}</span>`;
 };
 const revTag = l => l.revised ? `<span class="chip" style="font-size:11px;padding:0 6px;margin:0">${esc(l.revised)}</span>` : "";
@@ -373,51 +372,52 @@ function relRow(l, dir) {
   const arrow = dir === "out" ? `${predTag(l.pred)} → ${nodeLink(other)}` : `${nodeLink(other)} → ${predTag(l.pred)}`;
   return `<div class="rel">${arrow} ${l.page ? `<span class="pg">(${esc(l.page)})</span>` : ""} ${revTag(l)}
     ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
-    ${l.undeclared ? `<div class="warn">⚠ Property 스키마 시트에 없는 predicate</div>` : ""}
-    ${l.viol ? `<div class="warn">⚠ Domain/Range 불일치</div>` : ""}</div>`;
+    ${l.undeclared ? `<div class="warn">⚠ Predicate not in the Property schema sheet</div>` : ""}
+    ${l.viol ? `<div class="warn">⚠ Domain/Range mismatch</div>` : ""}</div>`;
 }
 const extLinks = arr => arr.map(u => `<div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a></div>`).join("");
 
 function renderDetail() {
   const el = document.getElementById("detail");
-  if (!selected) { el.innerHTML = `<h2>상세 정보</h2><div class="empty">노드나 엣지를 클릭하면 상세 정보가 표시됩니다.</div>`; return; }
+  if (!selected) { el.innerHTML = `<h2>Details</h2><div class="empty">Click a node or edge to view details.</div>`; return; }
   if (selected.kind === "link") {
     const l = selected.l, s = byId.get(sid(l)), t = byId.get(tid(l)), sc = SCHEMA[l.pred];
-    el.innerHTML = `<h2>관계 <button class="link-btn" data-close>닫기 ✕</button></h2>
+    el.innerHTML = `<h2>Relation <button class="link-btn" data-close>Close ✕</button></h2>
       <div class="d-title" style="font-size:16px">${esc(predShort(l.pred))}</div>
       <div class="rel" style="border:0">${nodeLink(s)} → ${predTag(l.pred)} → ${nodeLink(t)}</div>
       <dl class="kv">
         <dt>Predicate</dt><dd><code>${esc(l.pred)}</code></dd>
         ${sc ? `<dt>Domain → Range</dt><dd>${esc(sc.domain)} → ${esc(sc.range)}</dd>` : ""}
-        <dt>페이지</dt><dd>${esc(l.page || "—")}</dd>
+        <dt>Page</dt><dd>${esc(l.page || "—")}</dd>
         ${l.revised ? `<dt>REVISED</dt><dd>${revTag(l)}</dd>` : ""}
       </dl>
       ${l.note ? `<div class="desc">${esc(l.note)}</div>` : ""}
-      ${l.undeclared ? `<div class="warn">⚠ Property 스키마 시트에 없는 predicate</div>` : ""}`;
+      ${l.undeclared ? `<div class="warn">⚠ Predicate not in the Property schema sheet</div>` : ""}`;
     return;
   }
   const n = selected.n;
   const out = n.out.filter(linkVisible), inc = n.inc.filter(linkVisible);
-  el.innerHTML = `<h2>상세 정보 <button class="link-btn" data-close>닫기 ✕</button></h2>
-    <span class="chip"><span class="dot" style="background:var(--c-${n.type})"></span>${n.type} · ${TYPE_KO[n.type]}</span>
-    ${n.iso ? `<span class="chip">고립 노드</span>` : ""}
-    <div class="d-title">${esc(n.en)}</div><div class="d-ko">${esc(n.ko)}</div>
+  el.innerHTML = `<h2>Details <button class="link-btn" data-close>Close ✕</button></h2>
+    <span class="chip"><span class="dot" style="background:var(--c-${n.type})"></span>${n.type}</span>
+    ${n.iso ? `<span class="chip">Isolated node</span>` : ""}
+    <div class="d-title">${esc(n.en)}</div>
     <dl class="kv">
       <dt>ID</dt><dd><code>${esc(n.id)}</code></dd>
+      ${n.ko ? `<dt>Label (ko)</dt><dd>${esc(n.ko)}</dd>` : ""}
       <dt>Linked Art</dt><dd>${esc(n.laClass)}</dd>
       ${n.evidence ? `<dt>Evidence</dt><dd>${esc(n.evidence)}</dd>` : ""}
       ${n.status ? `<dt>Mapping</dt><dd>${esc(n.status)}</dd>` : ""}
       ${n.chapters.length ? `<dt>Chapter</dt><dd>${n.chapters.map(c => `<span class="chip">${esc(c)}</span>`).join("")}</dd>` : ""}
       ${n.pages ? `<dt>Pages</dt><dd>${esc(n.pages)}</dd>` : ""}
-      <dt>연결</dt><dd>나가는 ${n.out.length} · 들어오는 ${n.inc.length}</dd>
+      <dt>Links</dt><dd>${n.iso ? "Isolated" : "Connected"} · ${n.out.length} outgoing · ${n.inc.length} incoming</dd>
     </dl>
     ${n.desc ? `<div class="desc">${esc(n.desc)}</div>` : ""}
-    ${n.scope && n.scope !== n.desc ? `<details><summary>내부 Scope Note</summary>${esc(n.scope)}</details>` : ""}
+    ${n.scope && n.scope !== n.desc ? `<details><summary>Internal scope note</summary>${esc(n.scope)}</details>` : ""}
     ${n.equivalent.length ? `<h3>Equivalent (sameAs)</h3><div class="ext">${extLinks(n.equivalent)}</div>` : ""}
     ${n.closeMatch.length ? `<h3>skos:closeMatch</h3><div class="ext">${extLinks(n.closeMatch)}</div>` : ""}
-    ${n.broaderExt.length ? `<h3>skos:broader (외부)</h3><div class="ext">${extLinks(n.broaderExt)}</div>` : ""}
-    ${out.length ? `<h3>나가는 관계 (${out.length})</h3>${out.map(l => relRow(l, "out")).join("")}` : ""}
-    ${inc.length ? `<h3>들어오는 관계 (${inc.length})</h3>${inc.map(l => relRow(l, "in")).join("")}` : ""}`;
+    ${n.broaderExt.length ? `<h3>skos:broader (external)</h3><div class="ext">${extLinks(n.broaderExt)}</div>` : ""}
+    ${out.length ? `<h3>Outgoing relations (${out.length})</h3>${out.map(l => relRow(l, "out")).join("")}` : ""}
+    ${inc.length ? `<h3>Incoming relations (${inc.length})</h3>${inc.map(l => relRow(l, "in")).join("")}` : ""}`;
 }
 document.addEventListener("click", ev => {
   const a = ev.target.closest("[data-node]");
@@ -440,7 +440,7 @@ function hideTip() { tip.hidden = true; }
 // ---------- sidebar controls ----------
 const legend = document.getElementById("legend");
 legend.innerHTML = TYPES.map(t => `<label><input type="checkbox" data-type="${t}" checked>
-  <span class="dot" style="background:var(--c-${t})"></span>${t} <span style="color:var(--muted)">${TYPE_KO[t]}</span>
+  <span class="dot" style="background:var(--c-${t})"></span>${t}
   <span class="cnt">${typeCounts[t]}</span></label>`).join("");
 legend.addEventListener("change", ev => {
   const t = ev.target.dataset.type; ev.target.checked ? hiddenTypes.delete(t) : hiddenTypes.add(t);
@@ -452,7 +452,7 @@ document.getElementById("allTypes").onclick = () => {
 };
 
 const preds = document.getElementById("preds");
-preds.innerHTML = predCounts.map(([p, c]) => `<label title="${esc(SCHEMA[p] ? SCHEMA[p].domain + " → " + SCHEMA[p].range : "스키마 미정의")}">
+preds.innerHTML = predCounts.map(([p, c]) => `<label title="${esc(SCHEMA[p] ? SCHEMA[p].domain + " → " + SCHEMA[p].range : "Not in schema")}">
   <input type="checkbox" data-pred="${esc(p)}" checked><code>${esc(p)}</code>${SCHEMA[p] ? "" : ' <span class="warn">*</span>'}
   <span class="cnt">${c}</span></label>`).join("");
 preds.addEventListener("change", ev => {
@@ -469,7 +469,7 @@ document.getElementById("allPreds").onclick = () => {
 document.getElementById("isoCount").textContent = `(${isoNodes.length})`;
 document.getElementById("isoList").innerHTML = isoNodes.length
   ? isoNodes.map(n => `<button data-node="${esc(n.id)}"><span class="dot" style="background:var(--c-${n.type})"></span>${esc(n.en)}<span class="ty">${n.type}</span></button>`).join("")
-  : `<div class="empty" style="color:var(--muted);font-size:13px">없음</div>`;
+  : `<div class="empty" style="color:var(--muted);font-size:13px">None</div>`;
 
 document.getElementById("edgeLabels").onchange = applyView;
 document.getElementById("fit").onclick = () => fit();
