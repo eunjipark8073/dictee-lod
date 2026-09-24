@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dictée LOD Graph</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --edge: #b9b8b0; --edge-hi: #52514e; --accent: #2a78d6; --warn: #d03b3b;
+  --c-Person: #2a78d6; --c-Event: #eb6834; --c-Concept: #1baf7a;
+  --c-Object: #eda100; --c-Group: #e87ba4; --c-Work: #008300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --edge: #4a4a46; --edge-hi: #c3c2b7; --accent: #3987e5; --warn: #e66767;
+    --c-Person: #3987e5; --c-Event: #d95926; --c-Concept: #199e70;
+    --c-Object: #c98500; --c-Group: #d55181; --c-Work: #008300;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --edge: #4a4a46; --edge-hi: #c3c2b7; --accent: #3987e5; --warn: #e66767;
+  --c-Person: #3987e5; --c-Event: #d95926; --c-Concept: #199e70;
+  --c-Object: #c98500; --c-Group: #d55181; --c-Work: #008300;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+
+.app { display: grid; grid-template-columns: minmax(0,1fr) 380px; grid-template-rows: auto minmax(0,1fr);
+  height: 100vh; gap: 0; }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .01em; }
+header .stats { color: var(--ink-2); font-size: 13px; }
+header .stats b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tools { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools input[type=search] { width: 220px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); }
+.btn { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2);
+  cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--axis); }
+.btn[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg .btn { border: 0; border-radius: 0; }
+label.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+
+main { position: relative; min-height: 0; background: var(--surface); }
+#graph { width: 100%; height: 100%; display: block; cursor: grab; }
+#graph:active { cursor: grabbing; }
+.link { stroke: var(--edge); stroke-width: 1.4; fill: none; }
+.link.hi { stroke: var(--edge-hi); stroke-width: 2; }
+.link.viol { stroke-dasharray: 5 3; }
+.link-hit { stroke: transparent; stroke-width: 10; fill: none; cursor: pointer; }
+.elabel { font-size: 9.5px; fill: var(--muted); pointer-events: none;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.elabel.hi { fill: var(--ink-2); font-weight: 600; }
+.node circle { stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+.node.iso circle { stroke: var(--muted); stroke-dasharray: 3 2; stroke-width: 1.5; }
+.node.sel circle { stroke: var(--ink); stroke-width: 3; }
+.node text { font-size: 11px; fill: var(--ink); pointer-events: none;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3.5px; stroke-linejoin: round; }
+.dim { opacity: .12; }
+.iso-box { fill: none; stroke: var(--axis); stroke-dasharray: 6 4; rx: 12; }
+.iso-title { font-size: 12px; fill: var(--muted); font-weight: 600; }
+.fill-Person { fill: var(--c-Person); } .fill-Event { fill: var(--c-Event); }
+.fill-Concept { fill: var(--c-Concept); } .fill-Object { fill: var(--c-Object); }
+.fill-Group { fill: var(--c-Group); } .fill-Work { fill: var(--c-Work); }
+
+#tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 280px; }
+#tip .t { color: var(--muted); }
+.hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); }
+
+#tableView { position: absolute; inset: 0; overflow: auto; padding: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; color: var(--muted); }
+td a, .rel a, .link-btn { color: var(--accent); cursor: pointer; text-decoration: none; }
+td a:hover, .rel a:hover { text-decoration: underline; }
+
+aside { border-left: 1px solid var(--border); background: var(--page); overflow-y: auto; min-height: 0; }
+section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0 0 8px; font-weight: 650; display: flex; justify-content: space-between; align-items: baseline; }
+section h2 .link-btn { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; background: none; border: 0; padding: 0; }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.legend label, .preds label { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 13px; padding: 2px 0; }
+.legend .cnt, .preds .cnt { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.preds { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; }
+.preds code { font-size: 12px; }
+input[type=checkbox] { accent-color: var(--ink-2); margin: 0; }
+.iso-list { display: flex; flex-direction: column; gap: 4px; }
+.iso-list button { display: flex; align-items: center; gap: 8px; text-align: left; background: var(--surface);
+  border: 1px dashed var(--axis); border-radius: 8px; padding: 6px 9px; cursor: pointer; font-size: 13px; }
+.iso-list button:hover { border-style: solid; }
+.iso-list .ty { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+
+#detail { background: var(--surface); }
+#detail .empty { color: var(--muted); font-size: 13px; }
+.d-title { font-size: 18px; font-weight: 650; margin: 2px 0 0; line-height: 1.25; }
+.d-ko { color: var(--ink-2); margin-bottom: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); margin: 0 4px 4px 0; color: var(--ink-2); }
+.kv { display: grid; grid-template-columns: 96px 1fr; gap: 3px 10px; font-size: 12.5px; margin: 10px 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; word-break: break-word; }
+.kv code { font-size: 12px; }
+.desc { font-size: 13px; color: var(--ink); margin: 8px 0; }
+details { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 10px; }
+summary { cursor: pointer; color: var(--muted); }
+h3 { font-size: 12px; color: var(--muted); margin: 14px 0 6px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+.rel { padding: 7px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.rel .p { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--ink-2);
+  background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.rel .pg { color: var(--muted); font-size: 12px; }
+.rel .note { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.warn { color: var(--warn); font-size: 12px; }
+.ext a { color: var(--accent); word-break: break-all; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto 62vh auto; height: auto; }
+  aside { border-left: 0; border-top: 1px solid var(--border); }
+  .tools { margin-left: 0; }
+  .tools input[type=search] { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Dictée LOD Graph <span style="color:var(--muted);font-weight:500">v2</span></h1>
+    <div class="stats" id="stats"></div>
+    <div class="tools">
+      <input type="search" id="search" list="names" placeholder="엔티티 검색 (en / ko)…" aria-label="엔티티 검색">
+      <datalist id="names"></datalist>
+      <label class="chk"><input type="checkbox" id="edgeLabels" checked> 엣지 라벨</label>
+      <div class="seg" role="group" aria-label="보기 전환">
+        <button class="btn" id="vGraph" aria-pressed="true">그래프</button>
+        <button class="btn" id="vTable" aria-pressed="false">관계 표</button>
+      </div>
+      <button class="btn" id="fit">화면 맞춤</button>
+      <button class="btn" id="reheat">레이아웃 재배치</button>
+      <button class="btn" id="theme" title="테마 전환">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <svg id="graph" role="img" aria-label="Dictée entity relationship graph"></svg>
+    <div id="tableView" hidden></div>
+    <div id="tip" hidden></div>
+    <div class="hint" id="hint">드래그: 노드 이동 · 휠: 확대/축소 · 배경 드래그: 이동 · 클릭: 상세 정보 · 더블클릭: 고정 해제</div>
+  </main>
+
+  <aside>
+    <section id="detail"><h2>상세 정보</h2><div class="empty">노드나 엣지를 클릭하면 상세 정보가 표시됩니다.</div></section>
+    <section><h2>노드 타입 <button class="link-btn" id="allTypes">전체</button></h2><div class="legend" id="legend"></div></section>
+    <section><h2>Predicate <button class="link-btn" id="allPreds">전체</button></h2><div class="preds" id="preds"></div></section>
+    <section><h2>고립 노드 <span id="isoCount" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="iso-list" id="isoList"></div></section>
+  </aside>
+</div>
+
+<script>/*__D3__*/</script>
+<script>
+const LD = /*__DATA__*/null;
+const SCHEMA = /*__SCHEMA__*/null;
+const TYPES = ["Person", "Event", "Concept", "Object", "Group", "Work"];
+const TYPE_KO = {Person: "인물", Event: "사건", Concept: "개념", Object: "객체", Group: "단체", Work: "작품"};
+
+// ---------- JSON-LD → nodes / links ----------
+const byId = new Map();
+const nodes = LD["@graph"].map(e => {
+  const name = lang => (e.identified_by || []).find(n => n.language === lang)?.content || "";
+  const ref = cls => (e.referred_to_by || []).find(r => r.classified_as === cls)?.content || "";
+  const n = {
+    id: e["@id"], type: e["dictrel:entityType"], laClass: e["@type"],
+    en: name("en"), ko: name("ko"), desc: ref("description"), scope: ref("scope_note"),
+    evidence: e["dict:evidenceType"], status: e["dictrel:mappingStatus"],
+    chapters: e["dict:chapter"] || [], pages: e["dict:pageReference"],
+    equivalent: (e.equivalent || []).map(x => x.id),
+    closeMatch: (e["skos:closeMatch"] || []).map(x => x.id),
+    broaderExt: (e["skos:broader"] || []).map(x => x.id).filter(id => !id.startsWith("dict:")),
+    out: [], inc: []
+  };
+  byId.set(n.id, n);
+  return n;
+});
+const links = [];
+for (const e of LD["@graph"]) {
+  for (const [key, val] of Object.entries(e)) {
+    if (!Array.isArray(val)) continue;
+    for (const v of val) {
+      if (!v || typeof v !== "object" || !String(v.id || "").startsWith("dict:") || !byId.has(v.id)) continue;
+      const l = { source: e["@id"], target: v.id, pred: key, page: v["dict:pageRef"], note: v["dict:note"],
+                  viol: !!v["dictrel:schemaViolation"], undeclared: v["dictrel:schemaStatus"] === "undeclared",
+                  revised: v["dictrel:revised"] || "" };
+      l.i = links.length; links.push(l);
+      byId.get(l.source).out.push(l); byId.get(l.target).inc.push(l);
+    }
+  }
+}
+nodes.forEach(n => { n.deg = n.out.length + n.inc.length; n.iso = n.deg === 0; n.r = n.iso ? 7 : 7 + Math.sqrt(n.deg) * 3.2; });
+const predShort = p => p.includes(":") ? p.split(":")[1] : p;
+const predCounts = d3.rollups(links, v => v.length, l => l.pred).sort((a, b) => b[1] - a[1]);
+const typeCounts = Object.fromEntries(TYPES.map(t => [t, nodes.filter(n => n.type === t).length]));
+const isoNodes = nodes.filter(n => n.iso);
+
+document.getElementById("stats").innerHTML =
+  `노드 <b>${nodes.length}</b> · 관계 <b>${links.length}</b> · predicate <b>${predCounts.length}</b> · 고립 <b>${isoNodes.length}</b>`;
+document.getElementById("names").innerHTML = nodes.map(n => `<option value="${esc(n.en)}">${esc(n.ko)}</option>`).join("");
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ---------- state ----------
+const hiddenTypes = new Set(), hiddenPreds = new Set();
+let selected = null;   // {kind:'node', n} | {kind:'link', l}
+
+// ---------- SVG ----------
+const svg = d3.select("#graph");
+const root = svg.append("g");
+const defs = svg.append("defs");
+for (const [idn, cls] of [["arrow", "var(--edge)"], ["arrow-hi", "var(--edge-hi)"]]) {
+  defs.append("marker").attr("id", idn).attr("viewBox", "0 -4 8 8").attr("refX", 8).attr("refY", 0)
+    .attr("markerWidth", 7).attr("markerHeight", 7).attr("orient", "auto")
+    .append("path").attr("d", "M0,-4L8,0L0,4").style("fill", cls);
+}
+const isoLayer = root.append("g");
+const linkLayer = root.append("g");
+const labelLayer = root.append("g");
+const nodeLayer = root.append("g");
+
+const zoom = d3.zoom().scaleExtent([0.2, 4]).on("zoom", ev => root.attr("transform", ev.transform));
+svg.call(zoom).on("dblclick.zoom", null);
+svg.on("click", ev => { if (ev.target === svg.node()) select(null); });
+
+const linkSel = linkLayer.selectAll("g").data(links).join("g");
+const linkLine = linkSel.append("line").attr("class", d => "link" + (d.viol || d.undeclared ? " viol" : ""))
+  .attr("marker-end", "url(#arrow)");
+linkSel.append("line").attr("class", "link-hit")
+  .on("click", (ev, d) => { ev.stopPropagation(); select({kind: "link", l: d}); })
+  .on("mousemove", (ev, d) => showTip(ev, `<b>${esc(predShort(d.pred))}</b><br><span class="t">${esc(byId.get(sid(d)).en)} → ${esc(byId.get(tid(d)).en)}${d.page ? " · " + esc(d.page) : ""}</span>`))
+  .on("mouseleave", hideTip);
+const edgeLabel = labelLayer.selectAll("text").data(links).join("text").attr("class", "elabel")
+  .attr("text-anchor", "middle").attr("dy", -3).text(d => predShort(d.pred));
+
+const nodeSel = nodeLayer.selectAll("g").data(nodes).join("g").attr("class", d => "node" + (d.iso ? " iso" : ""));
+nodeSel.append("circle").attr("r", d => d.r).attr("class", d => "fill-" + d.type);
+nodeSel.append("text").attr("x", d => d.r + 4).attr("dy", "0.35em").text(d => d.en);
+nodeSel.on("click", (ev, d) => { ev.stopPropagation(); select({kind: "node", n: d}); })
+  .on("dblclick", (ev, d) => { ev.stopPropagation(); if (!d.iso) { d.fx = d.fy = null; sim.alpha(0.3).restart(); } })
+  .on("mousemove", (ev, d) => showTip(ev, `<b>${esc(d.en)}</b> ${esc(d.ko)}<br><span class="t">${d.type} · 연결 ${d.deg}</span>`))
+  .on("mouseleave", hideTip)
+  .call(d3.drag()
+    .on("start", (ev, d) => { if (!ev.active) sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; hideTip(); })
+    .on("drag", (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+    .on("end", (ev, d) => { if (!ev.active) sim.alphaTarget(0); }));   // stays pinned; double-click to release
+
+const sid = l => typeof l.source === "object" ? l.source.id : l.source;
+const tid = l => typeof l.target === "object" ? l.target.id : l.target;
+
+// ---------- simulation ----------
+const connected = nodes.filter(n => !n.iso);
+const sim = d3.forceSimulation(connected)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(l => 70 + (l.source.r || 8) + (l.target.r || 8)).strength(0.55))
+  .force("charge", d3.forceManyBody().strength(-380))
+  .force("collide", d3.forceCollide(d => d.r + 14))
+  .force("x", d3.forceX(0).strength(0.04))
+  .force("y", d3.forceY(0).strength(0.05))
+  .stop();
+for (let i = 0; i < 400; i++) sim.tick();
+placeIsolated();
+sim.on("tick", render).alpha(0.05).restart();
+render();
+requestAnimationFrame(() => fit(0));
+
+// Isolated nodes sit in their own dashed corral beneath the connected component.
+function placeIsolated() {
+  if (!isoNodes.length) return;
+  const xs = connected.map(n => n.x), ys = connected.map(n => n.y);
+  const minX = d3.min(xs), maxX = d3.max(xs), maxY = d3.max(ys);
+  const cols = Math.max(1, Math.min(isoNodes.length, 4)), cw = 260, rh = 44;
+  const w = cols * cw, x0 = (minX + maxX) / 2 - w / 2 + 20, y0 = maxY + 110;
+  isoNodes.forEach((n, i) => { n.x = n.fx = x0 + (i % cols) * cw; n.y = n.fy = y0 + Math.floor(i / cols) * rh; });
+  const rows = Math.ceil(isoNodes.length / cols);
+  const isoBox = {x: x0 - 26, y: y0 - 46, w: w + 10, h: rows * rh + 40};
+  isoLayer.append("rect").attr("class", "iso-box").attr("x", isoBox.x).attr("y", isoBox.y)
+    .attr("width", isoBox.w).attr("height", isoBox.h);
+  isoLayer.append("text").attr("class", "iso-title").attr("x", isoBox.x + 14).attr("y", isoBox.y + 20)
+    .text(`고립 노드 · 관계 없음 (${isoNodes.length})`);
+}
+
+function render() {
+  linkSel.selectAll("line").each(function (d) {
+    const s = d.source, t = d.target, dx = t.x - s.x, dy = t.y - s.y, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    d3.select(this).attr("x1", s.x + ux * s.r).attr("y1", s.y + uy * s.r)
+      .attr("x2", t.x - ux * (t.r + 3)).attr("y2", t.y - uy * (t.r + 3));
+  });
+  edgeLabel.attr("transform", d => {
+    const s = d.source, t = d.target, mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+    let a = Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
+    if (a > 90) a -= 180; if (a < -90) a += 180;
+    return `translate(${mx},${my}) rotate(${a})`;
+  });
+  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+}
+
+function fit(duration = 600) {
+  const vis = nodes.filter(n => !hiddenTypes.has(n.type));
+  if (!vis.length) return;
+  const x0 = d3.min(vis, n => n.x - n.r) - 40, x1 = d3.max(vis, n => n.x + n.r) + 160;
+  const y0 = d3.min(vis, n => n.y - n.r) - 60, y1 = d3.max(vis, n => n.y + n.r) + 40;
+  const {width, height} = svg.node().getBoundingClientRect();
+  const k = Math.min(2, 0.95 * Math.min(width / (x1 - x0), height / (y1 - y0)));
+  const t = d3.zoomIdentity.translate(width / 2 - k * (x0 + x1) / 2, height / 2 - k * (y0 + y1) / 2).scale(k);
+  (duration ? svg.transition().duration(duration) : svg).call(zoom.transform, t);
+}
+function centerOn(n) {
+  const {width, height} = svg.node().getBoundingClientRect();
+  const k = Math.max(d3.zoomTransform(svg.node()).k, 1);
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width / 2 - k * n.x, height / 2 - k * n.y).scale(k));
+}
+
+// ---------- visibility & highlight ----------
+function linkVisible(l) {
+  return !hiddenPreds.has(l.pred) && !hiddenTypes.has(byId.get(sid(l)).type) && !hiddenTypes.has(byId.get(tid(l)).type);
+}
+const showEdgeLabels = () => document.getElementById("edgeLabels").checked;
+function applyView() {
+  const hiNodes = new Set(), hiLinks = new Set();
+  if (selected?.kind === "node") {
+    hiNodes.add(selected.n.id);
+    for (const l of [...selected.n.out, ...selected.n.inc]) if (linkVisible(l)) { hiLinks.add(l.i); hiNodes.add(sid(l)); hiNodes.add(tid(l)); }
+  } else if (selected?.kind === "link") {
+    hiLinks.add(selected.l.i); hiNodes.add(sid(selected.l)); hiNodes.add(tid(selected.l));
+  }
+  const focus = !!selected;
+  nodeSel.attr("display", d => hiddenTypes.has(d.type) ? "none" : null)
+    .classed("dim", d => focus && !hiNodes.has(d.id))
+    .classed("sel", d => selected?.kind === "node" && selected.n === d);
+  linkSel.attr("display", d => linkVisible(d) ? null : "none").classed("dim", d => focus && !hiLinks.has(d.i));
+  linkLine.classed("hi", d => hiLinks.has(d.i)).attr("marker-end", d => hiLinks.has(d.i) ? "url(#arrow-hi)" : "url(#arrow)");
+  edgeLabel.attr("display", d => linkVisible(d) && (showEdgeLabels() || hiLinks.has(d.i)) ? null : "none")
+    .classed("hi", d => hiLinks.has(d.i)).classed("dim", d => focus && !hiLinks.has(d.i));
+}
+
+// ---------- detail panel ----------
+const nodeLink = n => `<a data-node="${esc(n.id)}"><span class="dot fill-${n.type}" style="display:inline-block;width:9px;height:9px;background:var(--c-${n.type});margin-right:4px"></span>${esc(n.en)}</a>`;
+const predTag = p => {
+  const s = SCHEMA[p];
+  const title = s ? `${s.label}: ${s.domain} → ${s.range}` : "Property 시트에 정의되지 않은 predicate";
+  return `<span class="p" title="${esc(title)}">${esc(p)}</span>`;
+};
+const revTag = l => l.revised ? `<span class="chip" style="font-size:11px;padding:0 6px;margin:0">${esc(l.revised)}</span>` : "";
+function relRow(l, dir) {
+  const other = byId.get(dir === "out" ? tid(l) : sid(l));
+  const arrow = dir === "out" ? `${predTag(l.pred)} → ${nodeLink(other)}` : `${nodeLink(other)} → ${predTag(l.pred)}`;
+  return `<div class="rel">${arrow} ${l.page ? `<span class="pg">(${esc(l.page)})</span>` : ""} ${revTag(l)}
+    ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
+    ${l.undeclared ? `<div class="warn">⚠ Property 스키마 시트에 없는 predicate</div>` : ""}
+    ${l.viol ? `<div class="warn">⚠ Domain/Range 불일치</div>` : ""}</div>`;
+}
+const extLinks = arr => arr.map(u => `<div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a></div>`).join("");
+
+function renderDetail() {
+  const el = document.getElementById("detail");
+  if (!selected) { el.innerHTML = `<h2>상세 정보</h2><div class="empty">노드나 엣지를 클릭하면 상세 정보가 표시됩니다.</div>`; return; }
+  if (selected.kind === "link") {
+    const l = selected.l, s = byId.get(sid(l)), t = byId.get(tid(l)), sc = SCHEMA[l.pred];
+    el.innerHTML = `<h2>관계 <button class="link-btn" data-close>닫기 ✕</button></h2>
+      <div class="d-title" style="font-size:16px">${esc(predShort(l.pred))}</div>
+      <div class="rel" style="border:0">${nodeLink(s)} → ${predTag(l.pred)} → ${nodeLink(t)}</div>
+      <dl class="kv">
+        <dt>Predicate</dt><dd><code>${esc(l.pred)}</code></dd>
+        ${sc ? `<dt>Domain → Range</dt><dd>${esc(sc.domain)} → ${esc(sc.range)}</dd>` : ""}
+        <dt>페이지</dt><dd>${esc(l.page || "—")}</dd>
+        ${l.revised ? `<dt>REVISED</dt><dd>${revTag(l)}</dd>` : ""}
+      </dl>
+      ${l.note ? `<div class="desc">${esc(l.note)}</div>` : ""}
+      ${l.undeclared ? `<div class="warn">⚠ Property 스키마 시트에 없는 predicate</div>` : ""}`;
+    return;
+  }
+  const n = selected.n;
+  const out = n.out.filter(linkVisible), inc = n.inc.filter(linkVisible);
+  el.innerHTML = `<h2>상세 정보 <button class="link-btn" data-close>닫기 ✕</button></h2>
+    <span class="chip"><span class="dot" style="background:var(--c-${n.type})"></span>${n.type} · ${TYPE_KO[n.type]}</span>
+    ${n.iso ? `<span class="chip">고립 노드</span>` : ""}
+    <div class="d-title">${esc(n.en)}</div><div class="d-ko">${esc(n.ko)}</div>
+    <dl class="kv">
+      <dt>ID</dt><dd><code>${esc(n.id)}</code></dd>
+      <dt>Linked Art</dt><dd>${esc(n.laClass)}</dd>
+      ${n.evidence ? `<dt>Evidence</dt><dd>${esc(n.evidence)}</dd>` : ""}
+      ${n.status ? `<dt>Mapping</dt><dd>${esc(n.status)}</dd>` : ""}
+      ${n.chapters.length ? `<dt>Chapter</dt><dd>${n.chapters.map(c => `<span class="chip">${esc(c)}</span>`).join("")}</dd>` : ""}
+      ${n.pages ? `<dt>Pages</dt><dd>${esc(n.pages)}</dd>` : ""}
+      <dt>연결</dt><dd>나가는 ${n.out.length} · 들어오는 ${n.inc.length}</dd>
+    </dl>
+    ${n.desc ? `<div class="desc">${esc(n.desc)}</div>` : ""}
+    ${n.scope && n.scope !== n.desc ? `<details><summary>내부 Scope Note</summary>${esc(n.scope)}</details>` : ""}
+    ${n.equivalent.length ? `<h3>Equivalent (sameAs)</h3><div class="ext">${extLinks(n.equivalent)}</div>` : ""}
+    ${n.closeMatch.length ? `<h3>skos:closeMatch</h3><div class="ext">${extLinks(n.closeMatch)}</div>` : ""}
+    ${n.broaderExt.length ? `<h3>skos:broader (외부)</h3><div class="ext">${extLinks(n.broaderExt)}</div>` : ""}
+    ${out.length ? `<h3>나가는 관계 (${out.length})</h3>${out.map(l => relRow(l, "out")).join("")}` : ""}
+    ${inc.length ? `<h3>들어오는 관계 (${inc.length})</h3>${inc.map(l => relRow(l, "in")).join("")}` : ""}`;
+}
+document.addEventListener("click", ev => {
+  const a = ev.target.closest("[data-node]");
+  if (a) { const n = byId.get(a.dataset.node); select({kind: "node", n}); if (!tableMode) centerOn(n); else setView(false, n); return; }
+  if (ev.target.closest("[data-close]")) select(null);
+});
+function select(s) { selected = s; applyView(); renderDetail(); }
+
+// ---------- tooltip ----------
+const tip = document.getElementById("tip");
+function showTip(ev, html) {
+  const box = document.querySelector("main").getBoundingClientRect();
+  tip.innerHTML = html; tip.hidden = false;
+  let x = ev.clientX - box.left + 14, y = ev.clientY - box.top + 14;
+  if (x + tip.offsetWidth > box.width - 8) x = ev.clientX - box.left - tip.offsetWidth - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip() { tip.hidden = true; }
+
+// ---------- sidebar controls ----------
+const legend = document.getElementById("legend");
+legend.innerHTML = TYPES.map(t => `<label><input type="checkbox" data-type="${t}" checked>
+  <span class="dot" style="background:var(--c-${t})"></span>${t} <span style="color:var(--muted)">${TYPE_KO[t]}</span>
+  <span class="cnt">${typeCounts[t]}</span></label>`).join("");
+legend.addEventListener("change", ev => {
+  const t = ev.target.dataset.type; ev.target.checked ? hiddenTypes.delete(t) : hiddenTypes.add(t);
+  if (selected?.kind === "node" && hiddenTypes.has(selected.n.type)) selected = null;
+  applyView(); renderDetail(); renderTable();
+});
+document.getElementById("allTypes").onclick = () => {
+  hiddenTypes.clear(); legend.querySelectorAll("input").forEach(i => i.checked = true); applyView(); renderDetail(); renderTable();
+};
+
+const preds = document.getElementById("preds");
+preds.innerHTML = predCounts.map(([p, c]) => `<label title="${esc(SCHEMA[p] ? SCHEMA[p].domain + " → " + SCHEMA[p].range : "스키마 미정의")}">
+  <input type="checkbox" data-pred="${esc(p)}" checked><code>${esc(p)}</code>${SCHEMA[p] ? "" : ' <span class="warn">*</span>'}
+  <span class="cnt">${c}</span></label>`).join("");
+preds.addEventListener("change", ev => {
+  const p = ev.target.dataset.pred; ev.target.checked ? hiddenPreds.delete(p) : hiddenPreds.add(p);
+  if (selected?.kind === "link" && hiddenPreds.has(selected.l.pred)) selected = null;
+  applyView(); renderDetail(); renderTable();
+});
+document.getElementById("allPreds").onclick = () => {
+  const allOn = hiddenPreds.size === 0;
+  preds.querySelectorAll("input").forEach(i => { i.checked = !allOn; allOn ? hiddenPreds.add(i.dataset.pred) : hiddenPreds.delete(i.dataset.pred); });
+  applyView(); renderDetail(); renderTable();
+};
+
+document.getElementById("isoCount").textContent = `(${isoNodes.length})`;
+document.getElementById("isoList").innerHTML = isoNodes.length
+  ? isoNodes.map(n => `<button data-node="${esc(n.id)}"><span class="dot" style="background:var(--c-${n.type})"></span>${esc(n.en)}<span class="ty">${n.type}</span></button>`).join("")
+  : `<div class="empty" style="color:var(--muted);font-size:13px">없음</div>`;
+
+document.getElementById("edgeLabels").onchange = applyView;
+document.getElementById("fit").onclick = () => fit();
+document.getElementById("reheat").onclick = () => {
+  connected.forEach(n => { n.fx = n.fy = null; }); sim.alpha(0.8).restart(); setTimeout(() => fit(), 1600);
+};
+document.getElementById("search").addEventListener("change", ev => {
+  const q = ev.target.value.trim().toLowerCase(); if (!q) return;
+  const n = nodes.find(n => n.en.toLowerCase() === q || n.ko === q) ||
+            nodes.find(n => n.en.toLowerCase().includes(q) || n.ko.includes(q) || n.id.includes(q));
+  if (n) { if (hiddenTypes.has(n.type)) document.getElementById("allTypes").click(); setView(false, n); select({kind: "node", n}); }
+});
+document.getElementById("theme").onclick = () => {
+  const r = document.documentElement, cur = r.dataset.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  r.dataset.theme = cur === "dark" ? "light" : "dark";
+};
+
+// ---------- table view ----------
+let tableMode = false;
+function setView(table, focusNode) {
+  tableMode = table;
+  document.getElementById("vGraph").setAttribute("aria-pressed", !table);
+  document.getElementById("vTable").setAttribute("aria-pressed", table);
+  document.getElementById("tableView").hidden = !table;
+  document.getElementById("graph").style.visibility = table ? "hidden" : "visible";
+  document.getElementById("hint").hidden = table;
+  if (table) renderTable(); else if (focusNode) centerOn(focusNode);
+}
+document.getElementById("vGraph").onclick = () => setView(false);
+document.getElementById("vTable").onclick = () => setView(true);
+function renderTable() {
+  if (!tableMode) return;
+  const rows = links.filter(linkVisible);
+  document.getElementById("tableView").innerHTML = `<table><thead><tr><th>#</th><th>Subject</th><th>Predicate</th><th>Object</th><th>Page</th><th>Note</th><th>REVISED</th></tr></thead><tbody>
+    ${rows.map(l => `<tr><td class="num">${l.i + 1}</td><td>${nodeLink(byId.get(sid(l)))}</td><td>${predTag(l.pred)}</td>
+      <td>${nodeLink(byId.get(tid(l)))}</td><td class="num">${esc(l.page || "")}</td><td>${esc(l.note || "")}</td><td>${revTag(l)}</td></tr>`).join("")}
+    </tbody></table>`;
+}
+
+addEventListener("resize", () => fit(0));
+applyView();
+</script>
+</body>
+</html>
