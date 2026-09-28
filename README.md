@@ -39,7 +39,6 @@ The dataset currently comprises 73 triples, 57 entities, and 25 properties.
 
 ## Access
 
-**Wikibase instance:** https://dictee-lod.wikibase.cloud  
 **Interactive visualization:** https://eunijipark8073.github.io/dictee-lod/dictee_graph_v2.html  
 **Zenodo DOI:** [to be added after deposit]
 
