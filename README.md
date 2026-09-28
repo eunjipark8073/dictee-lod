@@ -47,6 +47,8 @@ This dataset constitutes the first Linked Open Data model to treat *Dictee* as a
 
 **Interactive visualization:** https://eunjipark8073.github.io/dictee-lod/dictee_graph.html
 
+**Zenodo DOI:** [DOI 10.5281/zenodo.23015593](https://doi.org/10.5281/zenodo.23015593)
+
 ---
 
 ## License
