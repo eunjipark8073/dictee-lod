@@ -24,6 +24,12 @@ The dataset currently comprises 73 triples, 57 entities, and 25 properties.
 
 ---
 
+## Significance
+
+This dataset constitutes the first Linked Open Data model to treat *Dictee* as an art historical object rather than a bibliographic record. Standard ontologies — BIBFRAME, Linked Art, CIDOC-CRM — were designed for institutional cataloguing and cannot capture the relational logic of a work in which identity is exchangeable, colonial violence recurs as structure rather than sequence, and silence is itself a data point. The twenty custom properties introduced here are not workarounds but theoretical claims: each encodes a critical framework drawn from postcolonial feminist scholarship (Spivak, Mohanty, Lugones, Spillers, Wynter) directly into the data model. In doing so, the dataset repositions feminist and decolonial interpretation as a function of metadata infrastructure, not merely scholarly annotation.
+
+---
+
 ## Files
 
 | File | Description |
