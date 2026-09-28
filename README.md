@@ -39,7 +39,7 @@ The dataset currently comprises 73 triples, 57 entities, and 25 properties.
 
 ## Access
 
-**Interactive visualization:** https://eunijipark8073.github.io/dictee-lod/dictee_graph_v2.html  
+**Interactive visualization:** https://eunjipark8073.github.io/dictee-lod/dictee_graph.html
 **Zenodo DOI:** [to be added after deposit]
 
 ---
@@ -48,12 +48,6 @@ The dataset currently comprises 73 triples, 57 entities, and 25 properties.
 
 This dataset is published under Creative Commons Attribution 4.0 International (CC BY 4.0).  
 https://creativecommons.org/licenses/by/4.0/
-
----
-
-## Citation
-
-Park, Eunji. 2026. *Dictee LOD: A Feminist Linked Open Data Model for Theresa Hak Kyung Cha's Dictee*. [DOI to be added]. Universität der Künste Berlin.
 
 ---
 
