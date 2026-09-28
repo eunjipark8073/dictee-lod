@@ -1,0 +1,27 @@
+,Dictee LOD ? Property Schema Map ,,,
+Property,Property (with namespace),Domain,Range,Vocabulary Source
+broader,skos:broader,Concept,Concept or External URI (AAT/LCSH/Homosaurus),https://www.w3.org/TR/skos-reference/#broader
+subverts,dict:subverts,Object/Any,Concept or Type,Custom (this dataset)
+isPartOf,dict:isPartIn,Person,Chapter,https://schema.org/isPartOf
+mentions,schema:mentions,Any,Any,Schema.org
+critiques,dict:critiques,Person(Scholarly),Concept,Linked.art (extended)
+evidenceType,dict:evidenceType,Concept | Person | Event | Object | Group | Work,Evidence Type(Q1-3),Custom (this dataset)
+composedOf,dict:composedOf,Work,Chapter,Custom (this dataset)
+creator,dct:creator,Work,Person,Dublin Core (dct:creator)
+hasNarrator,dict:hasNarrator,Work,Person(Diseuse),Custom (this dataset)
+narrates,dict:narrates,Person(Diseuse),Chapter,Custom (this dataset)
+hasExchangeableIdentity,dict:hasExchangeableIdentity,Person,Person,Custom (this dataset)
+hasPostcolonialParallel,dict:hasPostcolonialParallel,Any,Any,Custom (this dataset)
+performsMediation,dict:performsMediation,Person(Diseuse),Person,CIDOC CRM (adapted)
+prefigures,dict:prefigures,Any(Object/Concept),Any(Concept),CIDOC CRM (adapted)
+silences,dict:silences,Event/Concept,Person,CIDOC CRM (adapted)
+isRecurrenceOf,dict:isRecurrenceOf,Event,Event,CIDOC CRM (adapted)
+hasFamilyRelation,dict:hasFamilyRelation,Person,Person,Custom (this dataset)
+closeMatch,skos:closeMatch,Any,External URI,https://www.w3.org/TR/skos-reference/#closeMatch
+mythologicalParallelOf,dict:mythologicalParallelOf,Person,Person,Custom (this dataset)
+sharesNameWith,dict:sharesNameWith,Person,Person,Custom (this dataset)
+performsAs,dict:performsAs,Person,Person,Custom (this dataset)
+requiresExcavationBy,dict:requiresExcavationBy,Concept,Person or Concept,Custom (this dataset)
+embodiesPunctuation,dict:embodiesPunctuation,Person,Concept or Type,Custom (this dataset)
+publisher,dct:publisher,Work,Group,Dublin Core
+holds,schema:holds,Group,Work,Schema.org
